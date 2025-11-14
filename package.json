@@ -1,0 +1,28 @@
+{
+  "name": "fakepixel-discord-bot",
+  "version": "1.0.0",
+  "description": "FakePixel Discord Bot with integrated transcript viewer",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "djs-commander": "^0.0.50",
+    "mongoose": "^8.0.3",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ejs": "^3.1.9",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "moment": "^2.29.4",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["discord", "bot", "transcript", "ticket", "giveaway"],
+  "author": "FakePixel Giveaways",
+  "license": "MIT"
+}

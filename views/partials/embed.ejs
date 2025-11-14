@@ -1,0 +1,71 @@
+<div class="embed <%= embed.color ? 'colored' : '' %>" style="<%= embed.color ? 'border-left-color: #' + embed.color.toString(16).padStart(6, '0') : '' %>">
+    <!-- Embed Author -->
+    <% if (embed.author) { %>
+        <div class="embed-author">
+            <% if (embed.author.iconURL) { %>
+                <img class="embed-author-icon" src="<%= embed.author.iconURL %>" alt="Author icon">
+            <% } %>
+            <% if (embed.author.url) { %>
+                <a href="<%= embed.author.url %>" class="embed-author-name" target="_blank"><%= embed.author.name %></a>
+            <% } else { %>
+                <span class="embed-author-name"><%= embed.author.name %></span>
+            <% } %>
+        </div>
+    <% } %>
+
+    <!-- Embed Thumbnail -->
+    <% if (embed.thumbnail) { %>
+        <img class="embed-thumbnail" src="<%= embed.thumbnail.url %>" alt="Thumbnail">
+    <% } %>
+
+    <!-- Embed Title -->
+    <% if (embed.title) { %>
+        <% if (embed.url) { %>
+            <a href="<%= embed.url %>" class="embed-title" target="_blank"><%= embed.title %></a>
+        <% } else { %>
+            <div class="embed-title"><%= embed.title %></div>
+        <% } %>
+    <% } %>
+
+    <!-- Embed Description -->
+    <% if (embed.description) { %>
+        <div class="embed-description"><%- embed.description.replace(/\n/g, '<br>') %></div>
+    <% } %>
+
+    <!-- Embed Fields -->
+    <% if (embed.fields && embed.fields.length > 0) { %>
+        <div class="embed-fields">
+            <% embed.fields.forEach(function(field) { %>
+                <div class="embed-field <%= field.inline ? 'inline' : '' %>">
+                    <div class="embed-field-name"><%= field.name %></div>
+                    <div class="embed-field-value"><%- field.value.replace(/\n/g, '<br>') %></div>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+
+    <!-- Embed Image -->
+    <% if (embed.image) { %>
+        <img class="embed-image" src="<%= embed.image.url %>" alt="Embed image">
+    <% } %>
+
+    <!-- Embed Footer -->
+    <% if (embed.footer || embed.timestamp) { %>
+        <div class="embed-footer">
+            <% if (embed.footer && embed.footer.iconURL) { %>
+                <img class="embed-footer-icon" src="<%= embed.footer.iconURL %>" alt="Footer icon">
+            <% } %>
+            <span>
+                <% if (embed.footer && embed.footer.text) { %>
+                    <%= embed.footer.text %>
+                <% } %>
+                <% if (embed.footer && embed.footer.text && embed.timestamp) { %>
+                    •
+                <% } %>
+                <% if (embed.timestamp) { %>
+                    <%= new Date(embed.timestamp).toLocaleString() %>
+                <% } %>
+            </span>
+        </div>
+    <% } %>
+</div>

@@ -1,0 +1,43 @@
+<% if (attachment.isImage) { %>
+    <!-- Image Attachment -->
+    <div class="attachment">
+        <img class="attachment-image" 
+             src="<%= attachment.url %>" 
+             alt="<%= attachment.filename %>"
+             onclick="window.open('<%= attachment.url %>', '_blank')">
+    </div>
+<% } else if (attachment.isVideo) { %>
+    <!-- Video Attachment -->
+    <div class="attachment">
+        <video controls class="attachment-image" style="max-width: 400px;">
+            <source src="<%= attachment.url %>" type="<%= attachment.contentType %>">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+<% } else { %>
+    <!-- File Attachment -->
+    <div class="attachment">
+        <svg class="attachment-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+        </svg>
+        <div class="attachment-info">
+            <a href="<%= attachment.url %>" class="attachment-name" target="_blank" download>
+                <%= attachment.filename %>
+            </a>
+            <div class="attachment-size">
+                <%= formatFileSize(attachment.size) %>
+            </div>
+        </div>
+    </div>
+<% } %>
+
+<%
+    // Helper function for file size formatting
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+%>
