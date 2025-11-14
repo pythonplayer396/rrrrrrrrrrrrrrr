@@ -19,57 +19,93 @@ document.addEventListener('DOMContentLoaded', function() {
         img.style.cursor = 'pointer';
     });
 
-    // Add hover effects for message groups
-    const messageGroups = document.querySelectorAll('.message-group');
-    messageGroups.forEach(group => {
-        group.addEventListener('mouseenter', function() {
-            this.style.backgroundColor = 'var(--discord-hover)';
-        });
-        
-        group.addEventListener('mouseleave', function() {
-            if (!this.classList.contains('system-message')) {
-                this.style.backgroundColor = 'transparent';
-            }
-        });
-    });
-
-    // Add tooltip functionality for timestamps
+    // Enhanced timestamp interactions
     const timestamps = document.querySelectorAll('.message-timestamp');
     timestamps.forEach(timestamp => {
         timestamp.addEventListener('click', function() {
             // Copy timestamp to clipboard
             const text = this.getAttribute('title') || this.textContent;
             navigator.clipboard.writeText(text).then(() => {
-                // Show brief feedback
-                const originalText = this.textContent;
-                this.textContent = 'Copied!';
-                setTimeout(() => {
-                    this.textContent = originalText;
-                }, 1000);
-            }).catch(err => {
-                console.log('Could not copy timestamp:', err);
+                showToast('Timestamp copied to clipboard!');
             });
         });
     });
 
-    // Add smooth scrolling to page
-    document.documentElement.style.scrollBehavior = 'smooth';
-
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        // Ctrl/Cmd + F for search (browser default)
-        // Home key to scroll to top
-        if (e.key === 'Home') {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+    // Message hover effects
+    const messageGroups = document.querySelectorAll('.message-group');
+    messageGroups.forEach(group => {
+        group.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'rgba(4, 4, 5, 0.07)';
+        });
         
-        // End key to scroll to bottom
-        if (e.key === 'End') {
+        group.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+
+    // Smooth scrolling for anchor links
+    const anchorLinks = document.querySelectorAll('a[href^="#"]');
+    anchorLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
             e.preventDefault();
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    });
+
+    // Enhanced keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        switch(e.key) {
+            case 'Escape':
+                closeAllModals();
+                break;
+            case 'Home':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                break;
+            case 'End':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+                break;
         }
     });
+
+    // Copy message content on double-click
+    const messageContents = document.querySelectorAll('.message-content');
+    messageContents.forEach(content => {
+        content.addEventListener('dblclick', function() {
+            const text = this.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Message copied to clipboard!');
+            });
+        });
+    });
+
+    // Lazy loading for images
+    const lazyImages = document.querySelectorAll('img[data-src]');
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy');
+                    imageObserver.unobserve(img);
+                }
+            });
+        });
+
+        lazyImages.forEach(img => imageObserver.observe(img));
+    }
+
+    // Initialize animations
+    initializeAnimations();
 
     // Add loading states for images
     const allImages = document.querySelectorAll('img');

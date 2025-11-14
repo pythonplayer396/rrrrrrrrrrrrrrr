@@ -1,4 +1,4 @@
-<div class="message-embed" style="<%= embed.color ? 'border-left-color: #' + embed.color.toString(16).padStart(6, '0') : '' %>">
+<div class="embed <%= embed.color ? 'colored' : '' %>" style="<%= embed.color ? 'border-left-color: #' + embed.color.toString(16).padStart(6, '0') : '' %>">
     <!-- Embed Author -->
     <% if (embed.author) { %>
         <div class="embed-author">

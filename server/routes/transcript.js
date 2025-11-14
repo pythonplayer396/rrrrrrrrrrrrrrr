@@ -30,12 +30,12 @@ router.get('/transcript/:id', async (req, res) => {
     const transcriptData = JSON.parse(fs.readFileSync(transcriptPath, 'utf8'));
     
     // Process messages for display
-    const processedMessages = transcriptData.messages.map(msg => ({
+    const processedMessages = (transcriptData.messages || []).map(msg => ({
       ...msg,
       timestamp: moment(msg.timestamp).format('MM/DD/YYYY h:mm A'),
       timestampTooltip: moment(msg.timestamp).format('dddd, MMMM Do YYYY [at] h:mm:ss A'),
-      isBot: msg.author.bot || false,
-      isSystem: msg.type === 'system' || msg.author.id === 'system'
+      isBot: msg.author?.bot || false,
+      isSystem: msg.type === 'system' || msg.author?.id === 'system'
     }));
     
     res.render('transcript', {
@@ -49,9 +49,10 @@ router.get('/transcript/:id', async (req, res) => {
     
   } catch (error) {
     console.error('Error loading transcript:', error);
-    res.status(500).render('error', {
+    res.status(500).json({
       error: 'Error Loading Transcript',
-      message: 'There was an error loading the transcript. Please try again later.'
+      message: error.message,
+      stack: error.stack
     });
   }
 });

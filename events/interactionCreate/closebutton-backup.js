@@ -14,7 +14,7 @@ const staffPoints = require("../../schema/staffPoints");
 const couponSchema = require("../../schema/couponSchema");
 
 // Import the new transcript parser
-const TranscriptParser = require("../../transcript-web/server/utils/transcriptParser");
+const TranscriptParser = require("../../server/utils/transcriptParser");
 
 module.exports = async (interaction, client) => {
   try {
