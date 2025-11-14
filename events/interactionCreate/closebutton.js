@@ -13,6 +13,9 @@ const channelData = require("../../schema/ticketDetail");
 const staffPoints = require("../../schema/staffPoints");
 const couponSchema = require("../../schema/couponSchema");
 
+// Import the new transcript parser
+const TranscriptParser = require("../../server/utils/transcriptParser");
+
 module.exports = async (interaction, client) => {
   try {
     // BUTTON INTERACTION HANDLER
@@ -86,124 +89,222 @@ module.exports = async (interaction, client) => {
 
       // Send initial message about transcript generation
       await interaction.editReply({
-        content: "📄 Transcript is generating...",
+        content: "📄 Generating Discord-like transcript...",
       });
 
-      // Generate transcript
-      const messages = await channel.messages.fetch({ limit: 100 });
-      const sortedMessages = messages.sort(
-        (a, b) => a.createdTimestamp - b.createdTimestamp
-      );
+      // 🆕 NEW: Generate web transcript instead of text file
+      try {
+        // Fetch messages for transcript
+        const messages = await channel.messages.fetch({ limit: 100 });
+        const sortedMessages = messages.sort(
+          (a, b) => a.createdTimestamp - b.createdTimestamp
+        );
 
-      let transcriptContent = `Transcript of ${channel.name}\nClosed by: ${interaction.user.tag}\nReason: ${reason}\n\n`;
+        // Get ticket opener
+        const opener = channelEntry.userId ? 
+          await guild.members.fetch(channelEntry.userId).catch(() => null) : null;
 
-      sortedMessages.forEach((msg) => {
-        transcriptContent += `[${new Date(
-          msg.createdTimestamp
-        ).toLocaleString()}] ${msg.author.tag}: ${msg.content}\n`;
-
-        if (msg.attachments.size > 0) {
-          msg.attachments.forEach((attachment) => {
-            transcriptContent += `    📎 Attachment: ${attachment.url}\n`;
-          });
+        // Determine ticket type based on channel category
+        let ticketType = "General Support";
+        if (channel.parent) {
+          const categoryName = channel.parent.name.toLowerCase();
+          if (categoryName.includes("slayer")) ticketType = "Slayer Carry";
+          else if (categoryName.includes("dungeon")) ticketType = "Dungeon Carry";
+          else if (categoryName.includes("giveaway")) ticketType = "Giveaway Claim";
+          else if (categoryName.includes("punishment") || categoryName.includes("appeal")) ticketType = "Punishment Appeal";
+          else if (categoryName.includes("other")) ticketType = "Other Support";
         }
-      });
 
-      // Save transcript file
-      const transcriptsDir = path.join(__dirname, "../../transcripts");
-      if (!fs.existsSync(transcriptsDir)) {
-        fs.mkdirSync(transcriptsDir);
-      }
-
-      const fileName = `transcript-${channel.name}-${Date.now()}.txt`;
-      const filePath = path.join(transcriptsDir, fileName);
-      fs.writeFileSync(filePath, transcriptContent);
-
-      const attachment = new AttachmentBuilder(filePath);
-
-      // Send transcript to log channel and opener
-      const logChannelId = entry.transcriptChannelId;
-      const logsChannel = client.channels.cache.get(logChannelId);
-
-      if (logsChannel) {
-        const closeEmbed = new EmbedBuilder()
-          .setTitle("🎫 Ticket Transcript")
-          .setColor(0x9b7dfb)
-          .addFields(
-            { name: "Ticket Name:", value: channel.name },
-            { name: "Ticket Type:", value: channel.parent?.name || "Unknown" },
-            { name: "Ticket Closer:", value: interaction.user.username },
-            { name: "Closing Reason:", value: reason }
-          );
-
-        await logsChannel.send({
-          embeds: [closeEmbed],
-          files: [attachment],
+        // Initialize transcript parser
+        const parser = new TranscriptParser();
+        
+        // Generate web transcript
+        const transcript = await parser.generateTranscript({
+          messages: Array.from(sortedMessages.values()),
+          channel: channel,
+          guild: guild,
+          closer: interaction.user,
+          reason: reason,
+          ticketType: ticketType,
+          opener: opener?.user || null
         });
-        try {
-          // Send transcript to opener (if they exist)
-          const openerId = channelEntry.userId;
-          const opener = await interaction.guild.members.fetch(openerId).catch(() => null);
-          if (opener && opener.user) {
-            await opener.user.send({
-              embeds: [closeEmbed],
-              files: [attachment],
-            }).catch(() => {
-              console.log(`❌ Could not send transcript to user ${openerId}`);
-            });
 
-            // Send feedback request
-            const claimerId = channelEntry.claimer || "none";
-            const carrierMention = claimerId !== "none" ? `<@${claimerId}>` : "the staff member";
-            const feedbackEmbed = new EmbedBuilder()
-              .setTitle("⭐ How do you rate our help?")
-              .setDescription(`Dear <@${openerId}>,\n\nrecently you were contacting Staff by creating a ticket with ID **${channel.name}** on **${guild.name}**.\n\nTell us about your experience with ${carrierMention} and give them feedback.\n\nYou have **24 hours** to give a review.\n\nThank you for contacting us!\nYour feedback helps us improve our service! • ${new Date().toLocaleString()}\n\n> **⚠️ IMPORTANT - PRIVATE INFORMATION**\n> Do not show screenshots or details of this feedback to anyone, not even owners or staff members. Only you can see it. Staff will not ask for it, and carriers will not ask for it either. This is private information.`)
-              .setColor(0xffa500);
+        console.log(`📝 Generated web transcript: ${transcript.id}`);
 
-            const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require("discord.js");
-            const ratingButtons = new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId(`feedback_rating_1_${guildId}_${claimerId}`)
-                .setLabel("1")
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji("⭐"),
-              new ButtonBuilder()
-                .setCustomId(`feedback_rating_2_${guildId}_${claimerId}`)
-                .setLabel("2")
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji("⭐"),
-              new ButtonBuilder()
-                .setCustomId(`feedback_rating_3_${guildId}_${claimerId}`)
-                .setLabel("3")
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji("⭐"),
-              new ButtonBuilder()
-                .setCustomId(`feedback_rating_4_${guildId}_${claimerId}`)
-                .setLabel("4")
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji("⭐"),
-              new ButtonBuilder()
-                .setCustomId(`feedback_rating_5_${guildId}_${claimerId}`)
-                .setLabel("5")
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji("⭐")
-            );
+        // 🌐 Create transcript URL (replace with your domain)
+        const baseUrl = process.env.TRANSCRIPT_BASE_URL || "http://localhost:3000";
+        const transcriptUrl = `${baseUrl}${transcript.url}`;
 
-            await opener.user.send({
-              embeds: [feedbackEmbed],
-              components: [ratingButtons],
-            }).catch(() => {
-              console.log(`❌ Could not send feedback request to user ${openerId}`);
+        // Send transcript to log channel and opener
+        const logChannelId = entry.transcriptChannelId;
+        const logsChannel = client.channels.cache.get(logChannelId);
+
+        if (logsChannel) {
+          const closeEmbed = new EmbedBuilder()
+            .setTitle("🎫 Ticket Transcript")
+            .setColor(0x9b7dfb)
+            .addFields(
+              { name: "Ticket Name:", value: channel.name },
+              { name: "Ticket Type:", value: ticketType },
+              { name: "Ticket Closer:", value: interaction.user.username },
+              { name: "Closing Reason:", value: reason },
+              { name: "📄 View Transcript:", value: `[Click here to view](${transcriptUrl})` }
+            )
+            .setFooter({ 
+              text: `Transcript ID: ${transcript.id}`,
+              iconURL: guild.iconURL() 
+            })
+            .setTimestamp();
+
+          await logsChannel.send({
+            embeds: [closeEmbed]
+          });
+
+          try {
+            // Send transcript to opener (if they exist)
+            const openerId = channelEntry.userId;
+            const opener = await interaction.guild.members.fetch(openerId).catch(() => null);
+            if (opener && opener.user) {
+              const userEmbed = new EmbedBuilder()
+                .setTitle("🎫 Your Ticket Transcript")
+                .setDescription(`Your ticket **${channel.name}** has been closed.`)
+                .setColor(0x5865f2)
+                .addFields(
+                  { name: "Closed by:", value: interaction.user.username, inline: true },
+                  { name: "Reason:", value: reason, inline: true },
+                  { name: "📄 View Full Transcript:", value: `[Click here](${transcriptUrl})` }
+                )
+                .setFooter({ 
+                  text: `${guild.name} • Transcript saved permanently`,
+                  iconURL: guild.iconURL() 
+                })
+                .setTimestamp();
+
+              await opener.user.send({
+                embeds: [userEmbed]
+              }).catch(() => {
+                console.log(`❌ Could not send transcript to user ${openerId}`);
+              });
+
+              // Send feedback request
+              const claimerId = channelEntry.claimer || "none";
+              const carrierMention = claimerId !== "none" ? `<@${claimerId}>` : "the staff member";
+              const feedbackEmbed = new EmbedBuilder()
+                .setTitle("⭐ How do you rate our help?")
+                .setDescription(`Dear <@${openerId}>,\n\nrecently you were contacting Staff by creating a ticket with ID **${channel.name}** on **${guild.name}**.\n\nTell us about your experience with ${carrierMention} and give them feedback.\n\nYou have **24 hours** to give a review.\n\nThank you for contacting us!\nYour feedback helps us improve our service! • ${new Date().toLocaleString()}\n\n> **⚠️ IMPORTANT - PRIVATE INFORMATION**\n> Do not show screenshots or details of this feedback to anyone, not even owners or staff members. Only you can see it. Staff will not ask for it, and carriers will not ask for it either. This is private information.`)
+                .setColor(0xffa500);
+
+              const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require("discord.js");
+              const ratingButtons = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`feedback_rating_1_${guildId}_${claimerId}`)
+                  .setLabel("1")
+                  .setStyle(ButtonStyle.Secondary)
+                  .setEmoji("⭐"),
+                new ButtonBuilder()
+                  .setCustomId(`feedback_rating_2_${guildId}_${claimerId}`)
+                  .setLabel("2")
+                  .setStyle(ButtonStyle.Secondary)
+                  .setEmoji("⭐"),
+                new ButtonBuilder()
+                  .setCustomId(`feedback_rating_3_${guildId}_${claimerId}`)
+                  .setLabel("3")
+                  .setStyle(ButtonStyle.Secondary)
+                  .setEmoji("⭐"),
+                new ButtonBuilder()
+                  .setCustomId(`feedback_rating_4_${guildId}_${claimerId}`)
+                  .setLabel("4")
+                  .setStyle(ButtonStyle.Secondary)
+                  .setEmoji("⭐"),
+                new ButtonBuilder()
+                  .setCustomId(`feedback_rating_5_${guildId}_${claimerId}`)
+                  .setLabel("5")
+                  .setStyle(ButtonStyle.Primary)
+                  .setEmoji("⭐")
+              );
+
+              await opener.user.send({
+                embeds: [feedbackEmbed],
+                components: [ratingButtons],
+              }).catch(() => {
+                console.log(`❌ Could not send feedback request to user ${openerId}`);
+              });
+            }
+          } catch (error) { console.log(error) }
+        }
+
+        // Update the interaction with success message
+        await interaction.editReply({
+          content: `✅ Ticket closed successfully!\n📄 **Transcript:** ${transcriptUrl}`,
+        });
+
+      } catch (transcriptError) {
+        console.error("❗ Error generating web transcript:", transcriptError);
+        
+        // Fallback to old text transcript if web transcript fails
+        await interaction.editReply({
+          content: "⚠️ Web transcript failed, generating text backup...",
+        });
+
+        // Generate old-style text transcript as backup
+        const messages = await channel.messages.fetch({ limit: 100 });
+        const sortedMessages = messages.sort(
+          (a, b) => a.createdTimestamp - b.createdTimestamp
+        );
+
+        let transcriptContent = `Transcript of ${channel.name}\nClosed by: ${interaction.user.tag}\nReason: ${reason}\n\n`;
+
+        sortedMessages.forEach((msg) => {
+          transcriptContent += `[${new Date(
+            msg.createdTimestamp
+          ).toLocaleString()}] ${msg.author.tag}: ${msg.content}\n`;
+
+          if (msg.attachments.size > 0) {
+            msg.attachments.forEach((attachment) => {
+              transcriptContent += `    📎 Attachment: ${attachment.url}\n`;
             });
           }
-        } catch (error) { console.log(error) }
+        });
+
+        // Save backup transcript file
+        const transcriptsDir = path.join(__dirname, "../../transcripts");
+        if (!fs.existsSync(transcriptsDir)) {
+          fs.mkdirSync(transcriptsDir);
+        }
+
+        const fileName = `transcript-${channel.name}-${Date.now()}.txt`;
+        const filePath = path.join(transcriptsDir, fileName);
+        fs.writeFileSync(filePath, transcriptContent);
+
+        const attachment = new AttachmentBuilder(filePath);
+
+        const logChannelId = entry.transcriptChannelId;
+        const logsChannel = client.channels.cache.get(logChannelId);
+
+        if (logsChannel) {
+          const closeEmbed = new EmbedBuilder()
+            .setTitle("🎫 Ticket Transcript (Backup)")
+            .setColor(0x9b7dfb)
+            .addFields(
+              { name: "Ticket Name:", value: channel.name },
+              { name: "Ticket Type:", value: channel.parent?.name || "Unknown" },
+              { name: "Ticket Closer:", value: interaction.user.username },
+              { name: "Closing Reason:", value: reason }
+            );
+
+          await logsChannel.send({
+            embeds: [closeEmbed],
+            files: [attachment],
+          });
+        }
+
+        // Delete backup file after sending
+        fs.unlink(filePath, (err) => {
+          if (err) console.error("❗ Error deleting backup transcript file:", err);
+        });
       }
 
-      // Delete transcript file after sending (optional)
-      fs.unlink(filePath, (err) => {
-        if (err) console.error("❗ Error deleting transcript file:", err);
-      });
-      // Staff Points Logic
+      // Staff Points Logic (unchanged)
       const staffId = channelEntry.claimer;
 
       if (staffId) {
@@ -235,7 +336,7 @@ module.exports = async (interaction, client) => {
         }
       }
 
-      // Coupon Generation Logic
+      // Coupon Generation Logic (unchanged)
       const carryData = channelEntry.carryData;
       if (carryData && carryData.totalCarries > 7) {
         try {

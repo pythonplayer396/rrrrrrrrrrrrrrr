@@ -5,6 +5,8 @@ const { CommandHandler } = require("djs-commander");
 const path = require("path");
 const mongoose = require("mongoose");
 
+// Web server is handled by keep_alive.js
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -37,25 +39,9 @@ new CommandHandler({
   eventsPath: path.join(__dirname, "events"), // Optional if you have events
 });
 
-// ================================  No Staff Ping LOGIC ==========================================
-// client.on("messageCreate", async (message) => {
-//   if (message.author.bot) return;
+// Web server is now handled by keep_alive.js
 
-//   const staffRoleId = '1295341291994873886';
-//   if (message.mentions.roles.has(staffRoleId)) {
-//     if (!message.member.roles.cache.has(staffRoleId)) {
-//       try {
-//         await message.delete();
-
-//         await message.author.send({
-//           content: `You are not allowed to ping the staff role in **${message.guild.name}**.`,
-//         });
-//       } catch (err) {
-//         console.error('Failed to delete message or send DM:', err);
-//       }
-//     }
-//   }
-// });
+// ================================ DISCORD BOT SETUP ==========================================
 
 client.on("ready", () => {
   console.log("✅ Bot Online Successfully!");
@@ -75,9 +61,13 @@ process.on("unhandledRejection", (error) => {
   console.error("❌ Unhandled promise rejection:", error);
 });
 
+// ================================ STARTUP SEQUENCE ==========================================
+
 // Initialize bot
 async function startBot() {
   try {
+    console.log("🚀 Starting FakePixel Discord Bot...");
+    
     await connectToDatabase();
 
     if (!process.env.TOKEN) {
@@ -91,5 +81,8 @@ async function startBot() {
     process.exit(1);
   }
 }
+
+// Export client for use in other modules
+module.exports = { client };
 
 startBot();
